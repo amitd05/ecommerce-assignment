@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect,useCallback } from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -15,18 +15,29 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState("");
 const [priceFilter, setPriceFilter] = useState({min:"", max:""});
 
-  const axiosAuth = ()=>axios.create({ baseURL:API, headers: token?{Authorization:`Bearer ${token}`}:{} });
+  const axiosAuth = useCallback(() => 
+  axios.create({
+    baseURL: API,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }),
+  [token] 
+);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
   let query = `?q=${q}`;
-  if(categoryFilter) query += `&category=${categoryFilter}`;
-  if(priceFilter.min) query += `&minPrice=${priceFilter.min}`;
-  if(priceFilter.max) query += `&maxPrice=${priceFilter.max}`;
+  if (categoryFilter) query += `&category=${categoryFilter}`;
+  if (priceFilter.min) query += `&minPrice=${priceFilter.min}`;
+  if (priceFilter.max) query += `&maxPrice=${priceFilter.max}`;
   const res = await axiosAuth().get(`/items${query}`);
   setItems(res.data);
-};
-  const loadCart = async ()=>{ if(!user) return; const res=await axiosAuth().get("/cart"); setCart(res.data||{items:[]}); };
-  useEffect(()=>{ if(view==="products") loadProducts(); if(view==="cart") loadCart(); },[view]);
+}, [q, categoryFilter, priceFilter,axiosAuth]); 
+
+const loadCart = useCallback(async () => {
+  if (!user) return;
+  const res = await axiosAuth().get("/cart");
+  setCart(res.data || { items: [] });
+}, [user,axiosAuth]); 
+  useEffect(()=>{ if(view==="products") loadProducts(); if(view==="cart") loadCart(); },[view,loadProducts, loadCart]);
 
   const handleSignup=async e=>{ e.preventDefault(); const res=await axios.post(`${API}/auth/signup`,form); localStorage.setItem("token",res.data.token); localStorage.setItem("user",JSON.stringify(res.data.user)); setToken(res.data.token); setUser(res.data.user); setView("products"); };
   const handleLogin=async e=>{ e.preventDefault(); const res=await axios.post(`${API}/auth/login`,form); localStorage.setItem("token",res.data.token); localStorage.setItem("user",JSON.stringify(res.data.user)); setToken(res.data.token); setUser(res.data.user); setView("products"); };
